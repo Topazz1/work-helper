@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusHelper - Gagne ton temps libre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f7f5f2; /* Cream/Paper background */
+            transition: background-color 0.5s ease;
+        }
+
+        /* Smooth transitions for dimming effect */
+        .dimmable {
+            transition: opacity 0.5s ease, filter 0.5s ease;
+        }
+
+        .focus-mode-active .dimmable-target {
+            opacity: 0.1;
+            filter: blur(2px);
+            pointer-events: none;
+        }
+
+        .focus-mode-active .focused-element {
+            opacity: 1;
+            filter: none;
+            transform: scale(1.05);
+            z-index: 50;
+        }
+
+        /* Circle Progress Styles */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Heart Animation */
+        @keyframes beat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .heart-icon {
+            color: #ef4444;
+            display: inline-block;
+            margin: 0 2px;
+            animation: beat 2s infinite ease-in-out;
+        }
+
+        /* Custom Input Number styling */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center text-gray-700 overflow-hidden relative">
+
+    <!-- Header -->
+    <header class="absolute top-8 w-full text-center dimmable-target transition-all duration-500">
+        <h1 class="text-4xl font-bold text-stone-700 tracking-tight">Work Focus Helper</h1>
+        <p class="text-stone-500 mt-2">Travaille pour gagner ta liberté</p>
+    </header>
+
+    <!-- Main Grid Container -->
+    <main class="w-full max-w-5xl p-4 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 relative z-10">
+
+        <!-- WORK TIMER SECTION -->
+        <div id="work-container" class="flex flex-col items-center transition-all duration-500 p-6 rounded-3xl dimmable-target group">
+            <h2 class="text-2xl font-bold text-emerald-800 mb-4">Travail</h2>
+            
+            <!-- SVG Circle Timer -->
+            <div class="relative w-64 h-64 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform" onclick="toggleTimer('work')">
+                <svg class="progress-ring w-64 h-64">
+                    <circle class="text-emerald-100" stroke-width="8" stroke="currentColor" fill="transparent" r="120" cx="128" cy="128"/>
+                    <circle id="work-ring" class="progress-ring__circle text-emerald-600" stroke-width="8" stroke-linecap="round" stroke="currentColor" fill="white" r="120" cx="128" cy="128"/>
+                </svg>
+                
+                <!-- Center Content -->
+                <div class="absolute flex flex-col items-center justify-center pointer-events-none">
+                    <span id="work-display" class="text-5xl font-mono font-bold text-emerald-700">00:00</span>
+                    <i id="work-icon" class="fas fa-play mt-4 text-2xl text-emerald-500"></i>
+                    <span class="text-xs text-emerald-400 mt-2 font-medium">Gain: 50%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER STATS (Hearts Bank) -->
+        <div id="stats-container" class="flex flex-col items-center justify-center w-full md:w-1/3 py-8 dimmable-target">
+            <div class="glass-panel p-6 w-full text-center">
+                <p class="text-sm uppercase tracking-widest text-stone-400 font-bold mb-4">Temps de jeu gagné</p>
+                
+                <!-- Hearts Container -->
+                <div id="hearts-display" class="flex flex-wrap justify-center gap-2 min-h-[40px] mb-4 text-2xl">
+                    <span class="text-gray-300 italic text-sm self-center">Commence à travailler pour gagner des cœurs...</span>
+                </div>
+
+                <!-- Precise Banked Time -->
+                <div class="text-3xl font-bold text-rose-500 mb-1" id="bank-display">0 min</div>
+                <div class="text-xs text-stone-400 mb-6">1 cœur = 10 minutes</div>
+
+                <!-- Spend Controls -->
+                <div class="flex items-center justify-center gap-2 bg-white rounded-full p-1 pl-4 shadow-sm border border-stone-200">
+                    <span class="text-sm font-medium text-stone-500 whitespace-nowrap">Utiliser</span>
+                    <input type="number" id="spend-input" value="15" min="1" class="w-12 text-center font-bold text-stone-700 border-b border-stone-300 focus:outline-none focus:border-rose-500 bg-transparent">
+                    <span class="text-sm font-medium text-stone-500 mr-2">min</span>
+                    <button onclick="startPlayMode()" class="bg-rose-500 hover:bg-rose-600 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors shadow-md">
+                        <i class="fas fa-gamepad"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SOFT TASKS TIMER SECTION -->
+        <div id="soft-container" class="flex flex-col items-center transition-all duration-500 p-6 rounded-3xl dimmable-target">
+            <h2 class="text-2xl font-bold text-purple-800 mb-4">Tâches Douces</h2>
+            
+            <!-- SVG Circle Timer -->
+            <div class="relative w-64 h-64 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform" onclick="toggleTimer('soft')">
+                <svg class="progress-ring w-64 h-64">
+                    <circle class="text-purple-100" stroke-width="8" stroke="currentColor" fill="transparent" r="120" cx="128" cy="128"/>
+                    <circle id="soft-ring" class="progress-ring__circle text-purple-500" stroke-width="8" stroke-linecap="round" stroke="currentColor" fill="white" r="120" cx="128" cy="128"/>
+                </svg>
+                
+                <!-- Center Content -->
+                <div class="absolute flex flex-col items-center justify-center pointer-events-none">
+                    <span id="soft-display" class="text-5xl font-mono font-bold text-purple-700">00:00</span>
+                    <i id="soft-icon" class="fas fa-play mt-4 text-2xl text-purple-400"></i>
+                    <span class="text-xs text-purple-400 mt-2 font-medium">Gain: 33%</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FULL SCREEN PLAY OVERLAY (Hidden by default) -->
+    <div id="play-overlay" class="fixed inset-0 bg-stone-900/95 z-50 flex flex-col items-center justify-center text-white hidden opacity-0 transition-opacity duration-500">
+        <h2 class="text-3xl font-light mb-8 tracking-widest uppercase">Temps de repos</h2>
+        
+        <div class="relative w-80 h-80 flex items-center justify-center">
+             <!-- Pulsing Ring -->
+             <div class="absolute inset-0 rounded-full border-4 border-rose-500/30 animate-ping"></div>
+             
+             <svg class="progress-ring w-80 h-80 relative z-10">
+                <circle class="text-stone-700" stroke-width="12" stroke="currentColor" fill="transparent" r="150" cx="160" cy="160"/>
+                <circle id="play-ring" class="progress-ring__circle text-rose-500" stroke-width="12" stroke-linecap="round" stroke="currentColor" fill="transparent" r="150" cx="160" cy="160"/>
+            </svg>
+            <div class="absolute flex flex-col items-center">
+                <span id="play-display" class="text-7xl font-mono font-bold text-rose-400 drop-shadow-lg">15:00</span>
+                <button onclick="stopPlayMode()" class="mt-8 text-stone-400 hover:text-white transition-colors underline text-sm">Arrêter le minuteur</button>
+            </div>
+        </div>
+        
+        <p class="mt-12 text-stone-400 italic" id="play-message">Profite bien, tu l'as mérité.</p>
+    </div>
+
+    <!-- Audio Element -->
+    <!-- Using a base64 encoded simple beep sound for self-containment, but logic also uses AudioContext for procedural beep -->
+    <audio id="alarm-sound" preload="auto"></audio>
+
+    <script>
+        // --- CONFIGURATION ---
+        // Earn rates: 
+        // Work: 30min work = 15min play (Rate: 0.5)
+        // Soft: 30min work = 10min play (Rate: 0.3333)
+        const RATE_WORK = 0.5; 
+        const RATE_SOFT = 0.3333;
+
+        // --- STATE ---
+        let state = {
+            activeTimer: null, // 'work', 'soft', 'play', or null
+            bankedSeconds: 0,  // Total earned seconds available to spend
+            workSessionSeconds: 0, // Current session duration
+            softSessionSeconds: 0,
+            playSessionTotal: 0, // Total time allocated for current play
+            playSessionRemaining: 0,
+            intervalId: null
+        };
+
+        // --- DOM ELEMENTS ---
+        const els = {
+            workContainer: document.getElementById('work-container'),
+            softContainer: document.getElementById('soft-container'),
+            statsContainer: document.getElementById('stats-container'),
+            header: document.querySelector('header'),
+            
+            workDisplay: document.getElementById('work-display'),
+            softDisplay: document.getElementById('soft-display'),
+            bankDisplay: document.getElementById('bank-display'),
+            heartsDisplay: document.getElementById('hearts-display'),
+            
+            workRing: document.getElementById('work-ring'),
+            softRing: document.getElementById('soft-ring'),
+            playRing: document.getElementById('play-ring'),
+            
+            workIcon: document.getElementById('work-icon'),
+            softIcon: document.getElementById('soft-icon'),
+            
+            playOverlay: document.getElementById('play-overlay'),
+            playDisplay: document.getElementById('play-display'),
+            spendInput: document.getElementById('spend-input')
+        };
+
+        // Setup SVG Rings
+        const radius = 120;
+        const circumference = radius * 2 * Math.PI;
+        const playRadius = 150;
+        const playCircumference = playRadius * 2 * Math.PI;
+
+        function setupRing(ring, circ) {
+            ring.style.strokeDasharray = `${circ} ${circ}`;
+            ring.style.strokeDashoffset = circ;
+        }
+        setupRing(els.workRing, circumference);
+        setupRing(els.softRing, circumference);
+        setupRing(els.playRing, playCircumference);
+
+
+        // --- LOGIC ---
+
+        function formatTime(totalSeconds) {
+            const m = Math.floor(totalSeconds / 60);
+            const s = Math.floor(totalSeconds % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function updateBankDisplay() {
+            // Calculate hearts (1 heart = 10 mins = 600 seconds)
+            const heartsCount = Math.floor(state.bankedSeconds / 600);
+            const minutesAvailable = Math.floor(state.bankedSeconds / 60);
+            
+            // Text display
+            els.bankDisplay.textContent = `${minutesAvailable} min`;
+            
+            // Heart visual
+            els.heartsDisplay.innerHTML = '';
+            if (heartsCount === 0 && minutesAvailable < 10) {
+                const percent = (state.bankedSeconds / 600) * 100;
+                els.heartsDisplay.innerHTML = `<div class="w-32 h-2 bg-gray-200 rounded-full mt-2 overflow-hidden"><div class="h-full bg-rose-300 transition-all duration-300" style="width:${percent}%"></div></div>`;
+            } else {
+                for (let i = 0; i < heartsCount; i++) {
+                    els.heartsDisplay.innerHTML += '<i class="fas fa-heart heart-icon"></i>';
+                }
+                // Partial heart progress bar for the next one
+                const remainder = state.bankedSeconds % 600;
+                if (remainder > 0) {
+                     // small dot or partial opacity heart could go here, keeping it simple for now
+                }
+            }
+        }
+
+        function setProgress(ring, currentSeconds, maxSeconds, circ) {
+            // Visual loop every 60 minutes for work/soft to show movement
+            // For play, it is absolute based on total time set
+            let offset;
+            
+            if (state.activeTimer === 'play') {
+                const percent = currentSeconds / maxSeconds;
+                offset = circ - (percent * circ);
+            } else {
+                // Loop ring every 60 seconds just to show it's working active
+                const percent = (currentSeconds % 60) / 60;
+                offset = circ - (percent * circ);
+            }
+            ring.style.strokeDashoffset = offset;
+        }
+
+        function tick() {
+            if (state.activeTimer === 'work') {
+                state.workSessionSeconds++;
+                state.bankedSeconds += RATE_WORK; // Earn time
+                els.workDisplay.textContent = formatTime(state.workSessionSeconds);
+                setProgress(els.workRing, state.workSessionSeconds, 60, circumference);
+                
+            } else if (state.activeTimer === 'soft') {
+                state.softSessionSeconds++;
+                state.bankedSeconds += RATE_SOFT; // Earn time
+                els.softDisplay.textContent = formatTime(state.softSessionSeconds);
+                setProgress(els.softRing, state.softSessionSeconds, 60, circumference);
+            } else if (state.activeTimer === 'play') {
+                if (state.playSessionRemaining > 0) {
+                    state.playSessionRemaining--;
+                    els.playDisplay.textContent = formatTime(state.playSessionRemaining);
+                    setProgress(els.playRing, state.playSessionRemaining, state.playSessionTotal, playCircumference);
+                } else {
+                    playAlarm();
+                    stopPlayMode();
+                    alert("Temps écoulé ! Au travail !");
+                }
+            }
+            
+            // Update bank if not playing (playing deducts upfront usually, or dynamic?)
+            // We deducted upfront in startPlayMode
+            if (state.activeTimer !== 'play') {
+                updateBankDisplay();
+            }
+        }
+
+        function toggleTimer(type) {
+            // Stop current timer if running
+            if (state.intervalId) {
+                clearInterval(state.intervalId);
+                state.intervalId = null;
+            }
+
+            // If clicking the same active timer, we just pause (stop)
+            if (state.activeTimer === type) {
+                state.activeTimer = null;
+                resetVisualFocus();
+                updateIcons(null);
+                return;
+            }
+
+            // Start new timer
+            state.activeTimer = type;
+            state.intervalId = setInterval(tick, 1000); // Run every second
+
+            // Visual Effects
+            applyVisualFocus(type);
+            updateIcons(type);
+        }
+
+        function applyVisualFocus(type) {
+            document.body.classList.add('focus-mode-active');
+            
+            // Reset classes
+            els.workContainer.classList.remove('focused-element', 'dimmable-target');
+            els.softContainer.classList.remove('focused-element', 'dimmable-target');
+            els.statsContainer.classList.add('dimmable-target'); // Always dim stats during focus
+            els.header.classList.add('dimmable-target');
+
+            if (type === 'work') {
+                els.workContainer.classList.add('focused-element');
+                els.softContainer.classList.add('dimmable-target');
+            } else if (type === 'soft') {
+                els.softContainer.classList.add('focused-element');
+                els.workContainer.classList.add('dimmable-target');
+            }
+        }
+
+        function resetVisualFocus() {
+            document.body.classList.remove('focus-mode-active');
+            // Remove dimming classes
+            els.workContainer.classList.remove('focused-element', 'dimmable-target');
+            els.softContainer.classList.remove('focused-element', 'dimmable-target');
+            els.statsContainer.classList.remove('dimmable-target');
+            els.header.classList.remove('dimmable-target');
+        }
+
+        function updateIcons(activeType) {
+            els.workIcon.className = activeType === 'work' ? 'fas fa-pause mt-4 text-2xl text-emerald-500' : 'fas fa-play mt-4 text-2xl text-emerald-500';
+            els.softIcon.className = activeType === 'soft' ? 'fas fa-pause mt-4 text-2xl text-purple-400' : 'fas fa-play mt-4 text-2xl text-purple-400';
+        }
+
+        // --- PLAY MODE ---
+
+        function startPlayMode() {
+            const minutesToSpend = parseInt(els.spendInput.value);
+            const costSeconds = minutesToSpend * 60;
+
+            if (isNaN(minutesToSpend) || minutesToSpend <= 0) {
+                alert("Entre un nombre de minutes valide !");
+                return;
+            }
+
+            if (state.bankedSeconds < costSeconds) {
+                alert(`Tu n'as pas assez de temps en banque ! Tu as ${Math.floor(state.bankedSeconds/60)} minutes disponibles.`);
+                return;
+            }
+
+            // Stop other timers
+            if (state.intervalId) clearInterval(state.intervalId);
+            state.activeTimer = 'play';
+            
+            // Deduct time
+            state.bankedSeconds -= costSeconds;
+            updateBankDisplay();
+
+            // Init Play Session
+            state.playSessionTotal = costSeconds;
+            state.playSessionRemaining = costSeconds;
+
+            // UI Changes
+            els.playOverlay.classList.remove('hidden');
+            // Little delay for fade in
+            setTimeout(() => els.playOverlay.classList.remove('opacity-0'), 10);
+            
+            els.playDisplay.textContent = formatTime(state.playSessionRemaining);
+            
+            // Start Timer
+            state.intervalId = setInterval(tick, 1000);
+        }
+
+        function stopPlayMode() {
+            if (state.intervalId) clearInterval(state.intervalId);
+            state.activeTimer = null;
+            
+            els.playOverlay.classList.add('opacity-0');
+            setTimeout(() => {
+                els.playOverlay.classList.add('hidden');
+            }, 500);
+            
+            resetVisualFocus();
+        }
+
+        // --- SOUND ---
+        // Using AudioContext to generate a pleasant chime without external files
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playAlarm() {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
+            oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // Jump up
+            
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 1);
+            
+            // Double beep
+            setTimeout(() => {
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(440, audioCtx.currentTime);
+                osc2.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+                gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+                osc2.start();
+                osc2.stop(audioCtx.currentTime + 1);
+            }, 300);
+        }
+
+        // Init
+        updateBankDisplay();
+
+    </script>
+</body>
+</html>
